@@ -1,3 +1,9 @@
 rank-bm25
 streamlit
 scikit-learn
+sentence-transformers
+faiss-cpu
+pydantic
+tqdm
+pandas
+numpy
