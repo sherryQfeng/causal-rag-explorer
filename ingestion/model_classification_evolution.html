@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Language Model Landscape: Classification & Evolution</title>
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --panel: #111827;
+      --muted: #9ca3af;
+      --text: #e5e7eb;
+      --accent: #8b5cf6;
+      --accent-2: #06b6d4;
+      --accent-3: #f59e0b;
+      --ok: #10b981;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+      --chip: #1f2937;
+      --border: #1f2937;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+    a { color: var(--accent-2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 32px 20px 64px; }
+    header { margin-bottom: 24px; }
+    h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: 0.2px; }
+    p.lead { margin: 8px 0 0; color: var(--muted); }
+    .note { background: #0f172a; border: 1px solid var(--border); padding: 12px 14px; border-radius: 10px; margin-top: 14px; color: #cbd5e1; font-size: 14px; }
+
+    .section { margin-top: 28px; }
+    .section > h2 { font-size: 18px; margin: 0 0 12px; color: #f3f4f6; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
+    .col-6 { grid-column: span 6; }
+    .col-4 { grid-column: span 4; }
+    .col-3 { grid-column: span 3; }
+    .col-12 { grid-column: span 12; }
+    @media (max-width: 900px) { .col-6, .col-4, .col-3 { grid-column: span 12; } }
+
+    .card { background: #0f172a; border: 1px solid var(--border); border-radius: 12px; padding: 14px; height: 100%; }
+    .card h3 { margin: 0 0 8px; font-size: 16px; }
+    .card p { margin: 6px 0; color: #cbd5e1; font-size: 14px; line-height: 1.5; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .chip { background: var(--chip); border: 1px solid var(--border); padding: 4px 8px; border-radius: 999px; font-size: 12px; color: #d1d5db; }
+    .chip.accent { border-color: var(--accent); color: #ddd6fe; }
+    .chip.good { border-color: var(--ok); color: #d1fae5; }
+    .chip.warn { border-color: var(--warn); color: #fef3c7; }
+    .chip.bad { border-color: var(--bad); color: #fee2e2; }
+
+    .table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .table th, .table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .table th { color: #cbd5e1; font-weight: 600; }
+    .table td { color: #d1d5db; }
+
+    .timeline { position: relative; margin-left: 10px; padding-left: 16px; }
+    .timeline:before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: #1f2937; }
+    .tl-item { position: relative; margin: 10px 0 10px 0; }
+    .tl-item:before { content: ""; position: absolute; left: -7px; top: 6px; width: 10px; height: 10px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 0 3px rgba(139,92,246,0.2); }
+    .tl-item h4 { margin: 0 0 4px; font-size: 14px; color: #f9fafb; }
+    .tl-item p { margin: 0; color: #cbd5e1; font-size: 13px; }
+
+    .hl { color: #fff; font-weight: 600; }
+    code.inline { background: #111827; border: 1px solid var(--border); padding: 1px 6px; border-radius: 6px; color: #e5e7eb; }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <meta name="description" content="Intuitive map of NLP model families (BERT, GPT, T5, MPNet), their function shapes, training objectives, and evolution. Includes where all-mpnet-base-v2 fits and when to use which." />
+  <meta name="color-scheme" content="dark light">
+  <script>
+    // Tiny interactivity: filter cards by tag
+    function filterCards(tag) {
+      const cards = document.querySelectorAll('[data-tags]');
+      const chipEls = document.querySelectorAll('.chip.filter');
+      chipEls.forEach(c => c.classList.remove('accent'));
+      const activeChip = document.querySelector(`[data-filter="${tag}"]`);
+      if (activeChip) activeChip.classList.add('accent');
+      cards.forEach(card => {
+        const tags = (card.getAttribute('data-tags') || '').split(',');
+        const show = tag === 'all' || tags.includes(tag);
+        card.style.display = show ? 'block' : 'none';
+      });
+    }
+    window.addEventListener('DOMContentLoaded', () => filterCards('all'));
+  </script>
+  <style>
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .filters .chip { cursor: pointer; user-select: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Language Model Landscape: Classification & Evolution</h1>
+      <p class="lead">An intuitive map of model families, their <span class="hl">function shapes</span>, how they were trained, and when to use each. Includes where <code class="inline">all-mpnet-base-v2</code> fits in your retrieval stack.</p>
+      <div class="note">Mental model: each architecture is a different <span class="hl">function shape</span> that turns text into something useful — a <i>vector</i> for search, or <i>tokens</i> for generation. Parameter count controls how detailed that function can be.</div>
+    </header>
+
+    <section class="section">
+      <h2>Quick Classification</h2>
+      <div class="panel">
+        <div class="filters">
+          <span class="chip filter accent" data-filter="all" onclick="filterCards('all')">Show all</span>
+          <span class="chip filter" data-filter="encoder" onclick="filterCards('encoder')">Encoders</span>
+          <span class="chip filter" data-filter="decoder" onclick="filterCards('decoder')">Decoders</span>
+          <span class="chip filter" data-filter="encdec" onclick="filterCards('encdec')">Encoder–Decoders</span>
+          <span class="chip filter" data-filter="embedding" onclick="filterCards('embedding')">Embedding-focused</span>
+          <span class="chip filter" data-filter="cross" onclick="filterCards('cross')">Cross-encoders</span>
+        </div>
+        <div class="grid" style="margin-top: 12px;">
+          <div class="col-4">
+            <div class="card" data-tags="encoder,embedding">
+              <h3>BERT / RoBERTa (Encoders)</h3>
+              <p><span class="hl">Shape:</span> read all words together (bidirectional) → contextualize → pool → vector.</p>
+              <div class="chips">
+                <span class="chip">Mask words to learn</span>
+                <span class="chip good">Great understanding</span>
+                <span class="chip warn">Not for generation</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="card" data-tags="encoder,embedding">
+              <h3>MPNet / MiniLM (Encoders)</h3>
+              <p><span class="hl">Shape:</span> BERT-like, improved ordering (MPNet) or distilled (MiniLM) → vector.</p>
+              <div class="chips">
+                <span class="chip">Permutation-aware</span>
+                <span class="chip good">Strong for embeddings</span>
+                <span class="chip">110M / 22M params</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="card" data-tags="decoder">
+              <h3>GPT-2/3/4 (Decoders)</h3>
+              <p><span class="hl">Shape:</span> left→right next-token prediction. Outputs text, not fixed vectors.</p>
+              <div class="chips">
+                <span class="chip good">Best for generation</span>
+                <span class="chip warn">Heavier, costly</span>
+                <span class="chip bad">Embeddings are secondary</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="card" data-tags="encdec">
+              <h3>T5 / FLAN-T5 (Encoder–Decoder)</h3>
+              <p><span class="hl">Shape:</span> encode text meaning → decode to target task (summary, translate).</p>
+              <div class="chips">
+                <span class="chip">Text-to-text</span>
+                <span class="chip good">Flexible tasks</span>
+                <span class="chip">220M–3B+</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="card" data-tags="embedding">
+              <h3>Sentence Transformers (Bi-encoders)</h3>
+              <p><span class="hl">Shape:</span> twin encoders produce vectors; similarity ≈ cosine. Fast retrieval.</p>
+              <div class="chips">
+                <span class="chip good">Scale to millions</span>
+                <span class="chip">Siamese / contrastive</span>
+                <span class="chip">e.g., all-mpnet-base-v2</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="card" data-tags="cross">
+              <h3>Cross-encoders</h3>
+              <p><span class="hl">Shape:</span> encode query+doc together → single relevance score. Highest quality rerankers.</p>
+              <div class="chips">
+                <span class="chip good">Top accuracy</span>
+                <span class="chip warn">Slow (no precompute)</span>
+                <span class="chip">Use for top-k rerank</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Function Shapes (Plain Language)</h2>
+      <div class="panel">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Family</th>
+              <th>Mapping (function)</th>
+              <th>Intuition</th>
+              <th>Outputs</th>
+              <th>Best For</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Encoders (BERT, MPNet)</td>
+              <td>text → contextualize → pool → <span class="hl">vector</span></td>
+              <td>Read all words together, understand meaning, compress to numbers</td>
+              <td>Fixed-size embeddings (e.g., 768-d)</td>
+              <td>Semantic search, clustering</td>
+            </tr>
+            <tr>
+              <td>Decoders (GPT)</td>
+              <td>prefix → predict next token → repeat</td>
+              <td>Write the next word, one at a time</td>
+              <td>Generated text</td>
+              <td>Generation, reasoning, dialogue</td>
+            </tr>
+            <tr>
+              <td>Encoder–Decoders (T5)</td>
+              <td>source text → latent meaning → target text</td>
+              <td>Translate any text into a desired form</td>
+              <td>Task-specific text output</td>
+              <td>Summarize, translate, QA</td>
+            </tr>
+            <tr>
+              <td>Bi-encoders (Sentence-Tx)</td>
+              <td>query → vector; doc → vector; similarity ≈ cosine</td>
+              <td>Precompute docs once, compare fast at query time</td>
+              <td>Two vectors; fast similarity</td>
+              <td>Retrieval at scale</td>
+            </tr>
+            <tr>
+              <td>Cross-encoders</td>
+              <td>[query ⊕ doc] → single relevance score</td>
+              <td>Deep interaction between tokens across both texts</td>
+              <td>One score per pair</td>
+              <td>Reranking top-k</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Training Objectives (How They Learn)</h2>
+      <div class="panel grid">
+        <div class="col-6">
+          <div class="card">
+            <h3>Masked LM (BERT/RoBERTa)</h3>
+            <p>Hide some words and ask the model to guess them. Teaches bidirectional understanding and context.</p>
+            <div class="chips"><span class="chip good">Strong comprehension</span><span class="chip">Not generative</span></div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="card">
+            <h3>Permutation-aware MLM (MPNet)</h3>
+            <p>Combines masked modeling with permutation language modeling to better capture order and dependencies.</p>
+            <div class="chips"><span class="chip good">Better embeddings</span><span class="chip">Stable training</span></div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="card">
+            <h3>Autoregressive (GPT)</h3>
+            <p>Always predict the next token from left to right. Great for fluent generation and long-form reasoning.</p>
+            <div class="chips"><span class="chip good">Best generation</span><span class="chip warn">Heavy compute</span></div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="card">
+            <h3>Contrastive / Siamese (Sentence-Tx)</h3>
+            <p>Push semantically similar texts closer and dissimilar ones apart in vector space.</p>
+            <div class="chips"><span class="chip good">Great retrieval</span><span class="chip">Pairs/triplets training</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Embeddings Models (Examples)</h2>
+      <div class="panel">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>Params</th>
+              <th>Output</th>
+              <th>Strengths</th>
+              <th>Trade-offs</th>
+              <th>Use When…</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>all-mpnet-base-v2</td>
+              <td>~110M</td>
+              <td>768-d vector</td>
+              <td>Strong semantic similarity, robust across domains</td>
+              <td>Heavier than MiniLM</td>
+              <td>Quality > speed; hybrid BM25 + embed</td>
+            </tr>
+            <tr>
+              <td>all-MiniLM-L6-v2</td>
+              <td>~22M</td>
+              <td>384-d vector</td>
+              <td>Fast, lightweight, good-enough quality</td>
+              <td>Less nuanced</td>
+              <td>Realtime, edge, large corpora</td>
+            </tr>
+            <tr>
+              <td>multi-qa-mpnet-base-dot-v1</td>
+              <td>~110M</td>
+              <td>768-d vector</td>
+              <td>Tuned for question–answer retrieval</td>
+              <td>QA bias may affect generic search</td>
+              <td>FAQ/QA systems</td>
+            </tr>
+            <tr>
+              <td>e5-base / bge-base</td>
+              <td>~110M</td>
+              <td>768-d vector</td>
+              <td>Modern embedding baselines, strong retrieval</td>
+              <td>Require specific prompts</td>
+              <td>General-purpose retrieval</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Evolution Timeline (Selected Milestones)</h2>
+      <div class="panel timeline">
+        <div class="tl-item">
+          <h4>2018 — BERT</h4>
+          <p>Masked language modeling; bidirectional understanding. Encoder era begins.</p>
+        </div>
+        <div class="tl-item">
+          <h4>2019 — RoBERTa, DistilBERT, XLNet, SBERT</h4>
+          <p>Better pretraining regimes; lightweight distillation; permutation modeling; sentence-level embeddings.</p>
+        </div>
+        <div class="tl-item">
+          <h4>2019 — T5, BART</h4>
+          <p>Text-to-text framing and sequence denoising; encoder–decoder flexibility.</p>
+        </div>
+        <div class="tl-item">
+          <h4>2020 — MPNet, MiniLM, ELECTRA</h4>
+          <p>Permutation-aware encoders (MPNet), compact distillations (MiniLM), efficient pretraining (ELECTRA).</p>
+        </div>
+        <div class="tl-item">
+          <h4>2020 — GPT-3</h4>
+          <p>Few-shot prompting scales; large decoder-only models dominate generation.</p>
+        </div>
+        <div class="tl-item">
+          <h4>2021–2022 — Sentence-Transformers all-*, QA-tuned mpnet</h4>
+          <p>High-quality, ready-to-use embedding models like <code class="inline">all-mpnet-base-v2</code>.</p>
+        </div>
+        <div class="tl-item">
+          <h4>2023–2024 — FLAN-T5, LLaMA-family, Modern Embeddings (E5/BGE)</h4>
+          <p>Instruction tuning and strong open embeddings improve retrieval/playbooks.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Choosing the Right Tool</h2>
+      <div class="panel grid">
+        <div class="col-6">
+          <div class="card">
+            <h3>If you need fast, scalable search</h3>
+            <p>Use a <span class="hl">bi-encoder</span> like <code class="inline">all-mpnet-base-v2</code> or <code class="inline">all-MiniLM-L6-v2</code>. Precompute document vectors; compare with cosine similarity.</p>
+            <div class="chips"><span class="chip good">Precompute docs</span><span class="chip">FAISS / vector DB</span></div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="card">
+            <h3>If you need the best top-5 quality</h3>
+            <p>Retrieve with a bi-encoder, then <span class="hl">rerank</span> with a <span class="hl">cross-encoder</span> (e.g., MS-MARCO MiniLM). Hybrid = BM25 + λ·cosine works great.</p>
+            <div class="chips"><span class="chip good">Hybrid wins</span><span class="chip">Transparent scores</span></div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="card">
+            <h3>If you need fluent answers</h3>
+            <p>Use a <span class="hl">decoder</span> (GPT/T5 decoder) with retrieved context. Keep citations strict if doing synthesis.</p>
+            <div class="chips"><span class="chip good">Generation</span><span class="chip warn">Costly</span></div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="card">
+            <h3>In this repo</h3>
+            <p><span class="hl">Plan:</span> BM25 baseline → add embeddings (<code class="inline">all-mpnet-base-v2</code>) → hybrid scoring → optional cross-encoder rerank → Streamlit UI with citations.</p>
+            <div class="chips"><span class="chip">Searchable abstracts</span><span class="chip">Explainable scores</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="section" style="color: var(--muted);">
+      <div class="panel">
+        <p>Tip: Skim the <span class="hl">function shape</span> first, then pick by trade-off (quality, speed, cost). You can open this file directly from the project at <code class="inline">ingestion/model_classification_evolution.html</code>.</p>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
+
+

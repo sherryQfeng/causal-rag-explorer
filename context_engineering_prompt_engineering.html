@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Context Engineering vs Prompt Engineering</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #141a2f;
+      --text: #e6eaf2;
+      --muted: #a5b0c2;
+      --accent: #7aa2f7;
+      --accent-2: #f6c177;
+      --success: #8bd5ca;
+    }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--text);
+      background: radial-gradient(1200px 800px at 10% -10%, #1a2140 0%, var(--bg) 45%), var(--bg);
+    }
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+    header {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .title {
+      font-weight: 800;
+      font-size: 28px;
+      letter-spacing: 0.2px;
+    }
+    .subtitle {
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    /* Waterfall layout */
+    .waterfall {
+      position: relative;
+      counter-reset: step;
+      display: block;
+      padding-left: 28px;
+    }
+    .waterfall::before {
+      content: "";
+      position: absolute;
+      left: 20px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: rgba(255,255,255,0.08);
+    }
+    section.card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 18px 16px 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      position: relative;
+      margin: 18px 0 22px 20px; /* space between steps */
+    }
+    section.card::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: -42px;
+      top: 16px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--panel);
+      border: 2px solid rgba(255,255,255,0.22);
+      color: var(--accent-2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
+    }
+    section.card h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+      color: var(--accent);
+      letter-spacing: 0.2px;
+    }
+    .note {
+      color: var(--muted);
+      font-size: 14px;
+      margin: 8px 0 16px;
+    }
+    .legend {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 10px 0 4px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .legend .pill {
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.03);
+    }
+    footer {
+      margin-top: 26px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    /* Mermaid containers */
+    .mermaid {
+      background: var(--panel);
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .section-desc {
+      margin: 10px 0 12px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .callouts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .callout {
+      background: rgba(122,162,247,0.08);
+      border: 1px dashed rgba(122,162,247,0.4);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .callout strong { color: var(--accent-2); }
+    /* Simplified toggles */
+    details { margin-top: 8px; }
+    summary {
+      cursor: pointer;
+      color: var(--success);
+      font-weight: 700;
+      padding: 6px 0;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::before {
+      content: '▸ ';
+      color: var(--success);
+      display: inline-block;
+      margin-right: 4px;
+      transform: translateY(-1px);
+    }
+    details[open] summary::before { content: '▾ '; }
+  </style>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'dark', securityLevel: 'loose' });
+  </script>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="title">Context Engineering vs Prompt Engineering</div>
+      <div class="subtitle">Context engineering shapes <em>what the model knows right now</em>. Prompt engineering shapes <em>how the model behaves</em>. Together they form a controllable, traceable LLM system.</div>
+      <div class="legend">
+        <span class="pill">Context: retrieval, routing, packaging, citations</span>
+        <span class="pill">Prompt: instruction, schema, examples, policy</span>
+        <span class="pill">Both: evaluation, feedback, safety</span>
+      </div>
+    </header>
+
+    <div class="waterfall">
+      <section class="card">
+        <h2>Quick take</h2>
+        <ul>
+          <li><strong>Context engineering</strong>: control information (what the model sees now).</li>
+          <li><strong>Prompt engineering</strong>: control behavior (how it should respond).</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>When to tune what</h2>
+        <ul>
+          <li><strong>Wrong facts</strong> → improve retrieval/routing/packaging (context).</li>
+          <li><strong>Wrong format/tone</strong> → improve instructions/examples/schemas (prompt).</li>
+        </ul>
+      </section>
+      <section class="card">
+        <h2>1) Mental model (mindmap)</h2>
+        <details>
+          <summary>Show diagram</summary>
+          <div class="section-desc">Effective systems blend both disciplines. Use context to control <strong>information</strong>; use prompts to control <strong>behavior</strong>.</div>
+          <pre class="mermaid">
+mindmap
+  root((Effective LLM System))
+    Context Engineering
+      Corpus curation
+        Domain scoping
+        Freshness & recency
+        Safety filtering
+      Indexing & structure
+        Chunking strategy
+        Embeddings & BM25
+        Metadata & tags
+      Retrieval & routing
+        Query classification
+        Hybrid scoring
+        Rerankers
+      Packaging
+        Window packing
+        Citations & grounding
+        Tool-ready context
+      Feedback
+        Relevance labels
+        Offline eval & drift
+    Prompt Engineering
+      Instruction design
+        Task framing
+        Constraints & refusals
+      Demonstrations
+        Few-shot exemplars
+        Style & tone
+      Schemas
+        JSON/output formats
+        Function/tool calls
+      Control
+        Temperature & decoding
+        Safety & policy
+        Self-critique
+          </pre>
+          <div class="callouts">
+            <div class="callout"><strong>Heuristic:</strong> If the model is hallucinating facts, improve <em>context</em>. If it’s following the wrong procedure or tone, improve the <em>prompt</em>.</div>
+            <div class="callout"><strong>Traceability:</strong> Always pass citations/URLs in context and ask the prompt to <em>quote</em> and <em>link</em> to sources.</div>
+          </div>
+        </details>
+      </section>
+
+      <section class="card">
+        <h2>2) Request lifecycle (sequence)</h2>
+        <details>
+          <summary>Show diagram</summary>
+          <div class="section-desc">Context engineering dominates the left half (data → context). Prompt engineering dominates the right half (instruction → output).</div>
+          <pre class="mermaid">
+sequenceDiagram
+  participant U as User
+  participant X as Router (classify)
+  participant R as Retriever (hybrid)
+  participant C as Context Builder (pack)
+  participant L as LLM (generate)
+  participant E as Evaluator (guardrail)
+  U->>X: Query
+  X->>R: Route signals (lane/domain/method)
+  R->>C: Top-K docs (+scores)
+  C->>L: Instruction + Few-shot + Citations + Constraints
+  L-->>E: Draft response
+  E-->>L: Critique (format, faithfulness)
+  L-->>U: Final answer (+links)
+  E-->>R: Relevance labels (offline)
+          </pre>
+        </details>
+      </section>
+
+      <section class="card">
+        <h2>3) Levers side-by-side (flowchart)</h2>
+        <details>
+          <summary>Show diagram</summary>
+          <div class="section-desc">Both streams converge on the model. Improvements are multiplicative.</div>
+          <pre class="mermaid">
+flowchart LR
+  subgraph CE[Context Engineering]
+    A[Corpus curation]
+    B[Indexing · Chunking · Embeddings]
+    C[Retrieval · Rerank · Routing]
+    D[Context packaging · Citations]
+  end
+  subgraph PE[Prompt Engineering]
+    E[Instruction design]
+    F[Few-shot · Style]
+    G[Schemas · Tool calls]
+    H[Safety · Refusal policy]
+  end
+  A-->B-->C-->D-->J((LLM))
+  E-->J
+  F-->J
+  G-->J
+  H-->J
+  J-->O((Grounded Response))
+          </pre>
+          <div class="callouts">
+            <div class="callout"><strong>Grounding:</strong> Use hybrid retrieval and show all scores (BM25, dense, rerank).</div>
+            <div class="callout"><strong>Reliability:</strong> Enforce output schemas (JSON, citations) in the prompt and validate.</div>
+          </div>
+        </details>
+      </section>
+
+      <section class="card">
+        <h2>4) Where gains usually come from (timeline)</h2>
+        <details>
+          <summary>Show diagram</summary>
+          <div class="section-desc">As models improve, most quality gains shift from clever wordsmithing to better context.</div>
+          <pre class="mermaid">
+timeline
+  title Investment shift over time
+  2020 : Prompt craft (few-shot tricks)
+  2022 : RAG baseline (top-k paste)
+  2023 : Hybrid retrieval + rerank
+  2024 : Context engineering & agents
+  2025 : Eval harness · safety memory
+          </pre>
+        </details>
+      </section>
+    </div>
+
+    <footer>
+      Tips: If an answer feels <em>confident but wrong</em>, tune retrieval/routing and reduce temperature. If it feels <em>unsure or off-format</em>, strengthen instructions, examples, and schemas.
+    </footer>
+  </div>
+</body>
+</html>
+
+
