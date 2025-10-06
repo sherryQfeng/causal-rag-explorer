@@ -16,6 +16,13 @@ except ModuleNotFoundError:
     import sys
     sys.path.append(str(Path(__file__).resolve().parents[1]))
     from router.router import route_query
+try:
+    from retrieval.reranker import rerank as ce_rerank
+except ModuleNotFoundError:
+    # When running directly, add project root and retry
+    import sys
+    sys.path.append(str(Path(__file__).resolve().parents[1]))
+    from retrieval.reranker import rerank as ce_rerank
 
 
 def _project_paths() -> Tuple[Path, Path]:
@@ -99,7 +106,7 @@ def _compute_boosts(doc: Dict[str, Any], route: Dict[str, Any], min_year: int, m
     return total, boosts
 
 
-def search(query: str, k: int = 5) -> List[Dict[str, Any]]:
+def search(query: str, k: int = 5, rerank: bool = False, rerank_top_n: int = 20) -> List[Dict[str, Any]]:
     base, artifacts = _project_paths()
     bm25, docs = _load_bm25_index(artifacts)
 
@@ -130,14 +137,25 @@ def search(query: str, k: int = 5) -> List[Dict[str, Any]]:
         results.append(result)
 
     results.sort(key=lambda r: r["final_score"], reverse=True)
-    return results[:k]
+
+    # Optional reranking with cross-encoder on top-N
+    if rerank and results:
+        initial_top = results[: min(rerank_top_n, len(results))]
+        reranked = ce_rerank(query, initial_top)
+        # Keep only top-k after reranking
+        results = reranked[:k]
+    else:
+        results = results[:k]
+    return results
 
 
 def _cli() -> None:
-    parser = argparse.ArgumentParser(description="Hybrid BM25 search with router-aware boosts")
+    parser = argparse.ArgumentParser(description="Hybrid BM25 search with router-aware boosts and optional reranker")
     parser.add_argument("query", nargs="*", help="Query text")
     parser.add_argument("--k", type=int, default=5, help="Top-k results")
     parser.add_argument("--json", action="store_true", help="Print JSON output")
+    parser.add_argument("--rerank", action="store_true", help="Use cross-encoder reranker")
+    parser.add_argument("--rerank-top-n", type=int, default=20, help="How many from first stage to rerank")
     args = parser.parse_args()
 
     queries = args.query or [
@@ -148,7 +166,7 @@ def _cli() -> None:
 
     all_results = []
     for q in queries:
-        topk = search(q, k=args.k)
+        topk = search(q, k=args.k, rerank=args.rerank, rerank_top_n=args.rerank_top_n)
         if args.json:
             all_results.append({"query": q, "results": topk})
         else:
@@ -157,7 +175,10 @@ def _cli() -> None:
             for i, r in enumerate(topk, 1):
                 print(f"[{i}] {r.get('title', 'Untitled')}")
                 print(f"    Venue: {r.get('venue', 'Unknown')} ({r.get('year', 'Unknown')})")
-                print(f"    Scores → BM25: {r['bm25_score']:.4f}  Boost: +{r['boost_total']:.3f}  Final: {r['final_score']:.4f}")
+                line = f"    Scores → BM25: {r['bm25_score']:.4f}  Boost: +{r['boost_total']:.3f}  Final: {r['final_score']:.4f}"
+                if 'rerank_score' in r:
+                    line += f"  Rerank: {r['rerank_score']:.4f}"
+                print(line)
                 print(f"    Boosts: {r['boosts']}")
                 print(f"    URL: {r.get('url', '')}")
     if args.json:
