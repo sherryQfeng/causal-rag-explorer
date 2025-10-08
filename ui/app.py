@@ -1,6 +1,17 @@
 import streamlit as st
-from retrieval.query import search
-from router.router import route_query
+from pathlib import Path
+import sys
+try:
+    from retrieval.query import search
+except ModuleNotFoundError:
+    sys.path.append(str(Path(__file__).resolve().parents[1]))
+    from retrieval.query import search
+try:
+    from router.router import route_query
+except ModuleNotFoundError:
+    if str(Path(__file__).resolve().parents[1]) not in sys.path:
+        sys.path.append(str(Path(__file__).resolve().parents[1]))
+    from router.router import route_query
 
 st.set_page_config(page_title="Causal RAG Explorer", page_icon="🧭", layout="wide")
 st.title("Causal Inference RAG Explorer")
